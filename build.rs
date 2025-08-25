@@ -1,6 +1,8 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+mod download;
+
 fn generate_bindings<'a>(include_paths: impl Iterator<Item = &'a Path>) {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -100,6 +102,45 @@ fn discover() -> bool {
     false
 }
 
+#[cfg(feature = "bundled")]
+fn bundled() -> bool {
+    download::download_highs();
+    
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let install_path = PathBuf::from(&out_dir).join("highs_install");
+    
+    // The binary structure after extraction should contain include and lib directories
+    let include_path = install_path.join("include").join("highs");
+    let lib_path = install_path.join("lib");
+    
+    if !include_path.exists() || !lib_path.exists() {
+        panic!("Downloaded HiGHS binary doesn't contain expected include or lib directories");
+    }
+    
+    generate_bindings(Some(include_path.as_path()).into_iter());
+    
+    println!("cargo:rustc-link-search=native={}", lib_path.display());
+    println!("cargo:rustc-link-lib=dylib=highs");
+    
+    let target = env::var("TARGET").unwrap();
+    let apple = target.contains("apple");
+    let linux = target.contains("linux");
+    let mingw = target.contains("pc-windows-gnu");
+    
+    if apple {
+        println!("cargo:rustc-link-lib=dylib=c++");
+    } else if linux || mingw {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
+    }
+    
+    true
+}
+
+#[cfg(not(feature = "bundled"))]
+fn bundled() -> bool {
+    false
+}
+
 fn main() {
     if cfg!(all(
         any(
@@ -113,7 +154,7 @@ fn main() {
                Thus, your features will never have any effect. Please enable the 'build' feature on highs-sys if you want to build HiGHS or disable the 'libz', 'ninja' and 'highs_release' features.");
     }
 
-    if !discover() && !build() {
-        panic!("Could neither discover nor build HiGHS");
+    if !discover() && !bundled() && !build() {
+        panic!("Could neither discover, download bundled binary, nor build HiGHS");
     }
 }

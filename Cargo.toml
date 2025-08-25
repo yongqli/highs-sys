@@ -15,11 +15,16 @@ keywords = ["linear-programming", "optimization", "math", "solver"]
 bindgen = "0.71.1"
 cmake = { version = "0.1.49", optional = true }
 pkg-config = { version = "0.3.27", optional = true }
+ureq = { version = "2.0", optional = true }
+tempfile = { version = "3.0", optional = true }
+flate2 = { version = "1.0", optional = true }
+tar = { version = "0.4", optional = true }
 
 [features]
 default = ["build", "highs_release"]
 discover = ["dep:pkg-config"]
 build = ["dep:cmake"]
+bundled = ["dep:ureq", "dep:tempfile", "dep:flate2", "dep:tar"]
 highs_release = []
 ninja = []
 libz = []
